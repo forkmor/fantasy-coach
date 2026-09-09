@@ -1,0 +1,62 @@
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    restart: unless-stopped
+    init: true
+    environment:
+      HARNESS_PUBLIC_URL: https://${FIELDHOUSE_DOMAIN:?Set FIELDHOUSE_DOMAIN in .env}
+      HARNESS_PASSWORD_HASH: ${HARNESS_PASSWORD_HASH:?Run deploy/generate-config.py}
+      HARNESS_VAULT_KEY: ${HARNESS_VAULT_KEY:?Run deploy/generate-config.py}
+    volumes:
+      - fieldhouse-data:/data
+    read_only: true
+    tmpfs:
+      - /tmp:size=128m,mode=1777
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    mem_limit: 1g
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - private
+
+  caddy:
+    image: caddy:2.10-alpine
+    restart: unless-stopped
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      FIELDHOUSE_DOMAIN: ${FIELDHOUSE_DOMAIN:?Set FIELDHOUSE_DOMAIN in .env}
+      ACME_EMAIL: ${ACME_EMAIL:?Set ACME_EMAIL in .env}
+    ports:
+      - "80:80"
+      - "443:443"
+      - "443:443/udp"
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    security_opt:
+      - no-new-privileges:true
+    mem_limit: 256m
+    logging:
+      options:
+        max-size: "10m"
+        max-file: "3"
+    networks:
+      - private
+
+networks:
+  private:
+
+volumes:
+  fieldhouse-data:
+  caddy-data:
+  caddy-config:

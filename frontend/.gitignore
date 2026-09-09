@@ -1,0 +1,6 @@
+node_modules/
+dist/
+*.tsbuildinfo
+playwright-results/
+playwright-report/
+.smoke-data*/
